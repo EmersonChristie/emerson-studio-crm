@@ -1,0 +1,17 @@
+import { z } from 'zod';
+
+import type { Prisma } from '@prisma/client';
+
+const Schema: z.ZodType<Prisma.InquiryCreateManyInput> = z
+  .object({
+    id: z.number().optional(),
+    message: z.string(),
+    createdAt: z.coerce.date().optional(),
+    updatedAt: z.coerce.date().optional(),
+    artworkId: z.number(),
+    contactId: z.number(),
+    status: z.string().optional(),
+  })
+  .strict();
+
+export const InquiryCreateManyInputObjectSchema = Schema;
