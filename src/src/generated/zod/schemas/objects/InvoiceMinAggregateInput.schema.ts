@@ -1,0 +1,21 @@
+import { z } from 'zod';
+
+import type { Prisma } from '@prisma/client';
+
+const Schema: z.ZodType<Prisma.InvoiceMinAggregateInputType> = z
+  .object({
+    id: z.literal(true).optional(),
+    total: z.literal(true).optional(),
+    issuedDate: z.literal(true).optional(),
+    dueDate: z.literal(true).optional(),
+    status: z.literal(true).optional(),
+    createdAt: z.literal(true).optional(),
+    updatedAt: z.literal(true).optional(),
+    createdById: z.literal(true).optional(),
+    paymentUrl: z.literal(true).optional(),
+    taxPercentage: z.literal(true).optional(),
+    discountPercentage: z.literal(true).optional(),
+  })
+  .strict();
+
+export const InvoiceMinAggregateInputObjectSchema = Schema;

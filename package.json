@@ -18,9 +18,9 @@
     "release": "semantic-release",
     "prepare": "husky",
     "prisma": "prisma",
-    "prisma:migrate": "prisma migrate dev --schema=./db/prisma/schema.prisma",
-    "prisma:generate": "prisma generate --schema=./db/prisma/schema.prisma",
-    "prisma:studio": "prisma studio --schema=./db/prisma/schema.prisma",
+    "prisma:migrate": "prisma migrate dev --schema=./src/db/prisma/schema.prisma",
+    "prisma:generate": "prisma generate --schema=./src/db/prisma/schema.prisma",
+    "prisma:studio": "prisma studio --schema=./src/db/prisma/schema.prisma",
     "prisma:seed": "node ./db/prisma/seed.js"
   },
   "dependencies": {

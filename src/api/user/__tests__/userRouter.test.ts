@@ -26,7 +26,7 @@ describe('User API Endpoints', () => {
     it('should return a user for a valid ID', async () => {
       // Arrange
       const testId = 1;
-      const expectedUser = users.find((user) => user.id === testId) as User;
+      const expectedUser = users.find((user: User) => user.id === testId) as User;
 
       // Act
       const response = await request(app).get(`/users/${testId}`);
