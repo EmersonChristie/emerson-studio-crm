@@ -45,7 +45,35 @@ const generateModel = (modelName) => {
     generateFile(templatePath, outputPath, modelName);
   }
 
+  updateServerFile(modelName);
+
   console.log(`Model ${capitalize(modelName)} generated successfully!`);
+};
+
+const updateServerFile = (modelName) => {
+  const serverFilePath = path.resolve(__dirname, '../src/server.ts');
+  const routerImport = `import { ${modelName}Router } from '@/api/${modelName}/${modelName}Router';\n`;
+  const routerUse = `app.use('/${modelName}s', ${modelName}Router);\n`;
+
+  let serverFileContent = fs.readFileSync(serverFilePath, 'utf8');
+
+  // Add the router import
+  const importPosition = serverFileContent.indexOf('// Routers');
+  serverFileContent =
+    serverFileContent.slice(0, importPosition) +
+    '// Routers\n' +
+    routerImport +
+    serverFileContent.slice(importPosition + '// Routers'.length);
+
+  // Add the router use statement
+  const usePosition = serverFileContent.indexOf('// Routes');
+  serverFileContent =
+    serverFileContent.slice(0, usePosition) +
+    '// Routes\n' +
+    routerUse +
+    serverFileContent.slice(usePosition + '// Routes'.length);
+
+  fs.writeFileSync(serverFilePath, serverFileContent, 'utf8');
 };
 
 // Example usage

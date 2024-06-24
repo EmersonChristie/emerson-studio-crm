@@ -48,9 +48,6 @@ describe('User API Endpoints', () => {
       const response = await request(app).get(`/users/${testId}`);
       const responseBody: ServiceResponse = response.body;
 
-      console.log('Error: ', responseBody);
-      console.log('STATUS CODE');
-
       // Assert
       expect(response.statusCode).toEqual(StatusCodes.NOT_FOUND);
       expect(responseBody.success).toBeFalsy();

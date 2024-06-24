@@ -3,9 +3,14 @@ import express, { Express } from 'express';
 import helmet from 'helmet';
 import { pino } from 'pino';
 
+// Routers
+import { contactRouter } from '@/api/contact/contactRouter';
 import { healthCheckRouter } from '@/api/healthCheck/healthCheckRouter';
 import { userRouter } from '@/api/user/userRouter';
 import { openAPIRouter } from '@/api-docs/openAPIRouter';
+import { artworkRouter } from './api/artwork/artworkRouter';
+
+// Middleware
 import errorHandler from '@/common/middleware/errorHandler';
 import rateLimiter from '@/common/middleware/rateLimiter';
 import requestLogger from '@/common/middleware/requestLogger';
@@ -26,8 +31,10 @@ app.use(rateLimiter);
 app.use(requestLogger);
 
 // Routes
+app.use('/contacts', contactRouter);
 app.use('/health-check', healthCheckRouter);
 app.use('/users', userRouter);
+app.use('/artworks', artworkRouter);
 
 // Swagger UI
 app.use(openAPIRouter);

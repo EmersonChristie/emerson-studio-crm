@@ -46,9 +46,6 @@ describe('Template API Endpoints', () => {
       const response = await request(app).get(`/templates/${testId}`);
       const responseBody: ServiceResponse = response.body;
 
-      console.log('Error: ', responseBody);
-      console.log('STATUS CODE FROM RESPONSE: ', response.statusCode);
-
       // Assert
       expect(response.statusCode).toEqual(StatusCodes.NOT_FOUND);
       expect(responseBody.success).toBeFalsy();
