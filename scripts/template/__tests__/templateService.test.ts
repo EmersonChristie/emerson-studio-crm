@@ -1,11 +1,11 @@
 import { StatusCodes } from 'http-status-codes';
 import { Mock } from 'vitest';
 
-import { User } from '@/api/user/userModel';
-import { userRepository } from '@/api/user/userRepository';
-import { userService } from '@/api/user/userService';
+import { Template } from '@/api/template/templateModel';
+import { templateRepository } from '@/api/template/templateRepository';
+import { templateService } from '@/api/template/templateService';
 
-vi.mock('@/api/user/userRepository');
+vi.mock('@/api/template/templateRepository');
 vi.mock('@/server', () => ({
   ...vi.importActual('@/server'),
   logger: {
@@ -13,8 +13,8 @@ vi.mock('@/server', () => ({
   },
 }));
 
-describe('userService', () => {
-  const mockUsers: User[] = [
+describe('templateService', () => {
+  const mockTemplates: Template[] = [
     {
       id: 1,
       name: 'Test Template 1',
@@ -58,93 +58,93 @@ describe('userService', () => {
   ];
 
   describe('findAll', () => {
-    it('return all users', async () => {
+    it('return all templates', async () => {
       // Arrange
-      (userRepository.findAllAsync as Mock).mockReturnValue(mockUsers);
+      (templateRepository.findAllAsync as Mock).mockReturnValue(mockTemplates);
 
       // Act
-      const result = await userService.findAll();
+      const result = await templateService.findAll();
 
       // Assert
       expect(result.statusCode).toEqual(StatusCodes.OK);
       expect(result.success).toBeTruthy();
-      expect(result.message).toContain('Users found');
-      expect(result.responseObject).toEqual(mockUsers);
+      expect(result.message).toContain('Templates found');
+      expect(result.responseObject).toEqual(mockTemplates);
     });
 
-    it('returns a not found error for no users found', async () => {
+    it('returns a not found error for no templates found', async () => {
       // Arrange
-      (userRepository.findAllAsync as Mock).mockReturnValue(null);
+      (templateRepository.findAllAsync as Mock).mockReturnValue(null);
 
       // Act
-      const result = await userService.findAll();
+      const result = await templateService.findAll();
 
       // Assert
       expect(result.statusCode).toEqual(StatusCodes.NOT_FOUND);
       expect(result.success).toBeFalsy();
-      expect(result.message).toContain('No Users found');
+      expect(result.message).toContain('No Templates found');
       expect(result.responseObject).toBeNull();
     });
 
     it('handles errors for findAllAsync', async () => {
       // Arrange
-      (userRepository.findAllAsync as Mock).mockRejectedValue(new Error('Database error'));
+      (templateRepository.findAllAsync as Mock).mockRejectedValue(new Error('Database error'));
 
       // Act
-      const result = await userService.findAll();
+      const result = await templateService.findAll();
 
       // Assert
       expect(result.statusCode).toEqual(StatusCodes.INTERNAL_SERVER_ERROR);
       expect(result.success).toBeFalsy();
-      expect(result.message).toContain('Error finding all users');
+      expect(result.message).toContain('Error finding all templates');
       expect(result.responseObject).toBeNull();
     });
   });
 
   describe('findById', () => {
-    it('returns a user for a valid ID', async () => {
+    it('returns a template for a valid ID', async () => {
       // Arrange
       const testId = 1;
-      const mockUser = mockUsers.find((user) => user.id === testId);
-      (userRepository.findByIdAsync as Mock).mockReturnValue(mockUser);
+      const mockTemplate = mockTemplates.find((template) => template.id === testId);
+      (templateRepository.findByIdAsync as Mock).mockReturnValue(mockTemplate);
 
       // Act
-      const result = await userService.findById(testId);
+      const result = await templateService.findById(testId);
 
       // Assert
       expect(result.statusCode).toEqual(StatusCodes.OK);
       expect(result.success).toBeTruthy();
-      expect(result.message).toContain('User found');
-      expect(result.responseObject).toEqual(mockUser);
+      expect(result.message).toContain('Template found');
+      expect(result.responseObject).toEqual(mockTemplate);
     });
 
     it('handles errors for findByIdAsync', async () => {
       // Arrange
       const testId = 1;
-      (userRepository.findByIdAsync as Mock).mockRejectedValue(new Error('Database error'));
+      (templateRepository.findByIdAsync as Mock).mockRejectedValue(new Error('Database error'));
 
       // Act
-      const result = await userService.findById(testId);
+      const result = await templateService.findById(testId);
 
       // Assert
       expect(result.statusCode).toEqual(StatusCodes.INTERNAL_SERVER_ERROR);
       expect(result.success).toBeFalsy();
-      expect(result.message).toContain(`Error finding user with id ${testId}`);
+      expect(result.message).toContain(`Error finding template with id ${testId}`);
       expect(result.responseObject).toBeNull();
     });
 
     it('returns a not found error for non-existent ID', async () => {
       // Arrange
       const testId = 1;
-      (userRepository.findByIdAsync as Mock).mockReturnValue(null);
+      (templateRepository.findByIdAsync as Mock).mockReturnValue(null);
 
       // Act
-      const result = await userService.findById(testId);
+      const result = await templateService.findById(testId);
 
       // Assert
       expect(result.statusCode).toEqual(StatusCodes.NOT_FOUND);
       expect(result.success).toBeFalsy();
-      expect(result.message).toContain('User not found');
+      expect(result.message).toContain('Template not found');
       expect(result.responseObject).toBeNull();
     });
   });

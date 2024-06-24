@@ -1,9 +1,10 @@
 {
   "name": "express-typescript-boilerplate",
   "version": "1.0.13",
-  "description": "An Express boilerplate backend",
+  "description": "Emerson Studio API",
   "main": "index.ts",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "tsx watch --clear-screen=false src/index.ts | pino-pretty",
     "build": "rimraf dist && tsup",
@@ -18,10 +19,10 @@
     "release": "semantic-release",
     "prepare": "husky",
     "prisma": "prisma",
-    "prisma:migrate": "prisma migrate dev --schema=./src/db/prisma/schema.prisma",
-    "prisma:generate": "prisma generate --schema=./src/db/prisma/schema.prisma",
-    "prisma:studio": "prisma studio --schema=./src/db/prisma/schema.prisma",
-    "prisma:seed": "node ./db/prisma/seed.js"
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:generate": "prisma generate",
+    "prisma:studio": "prisma studio",
+    "prisma:seed": "node ./prisma/seed.js"
   },
   "dependencies": {
     "@asteasolutions/zod-to-openapi": "^7.0.0",

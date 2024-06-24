@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "ESNext",
-    "module": "CommonJS",
+    "module": "ESNext",
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"]
@@ -19,6 +19,11 @@
     "lib": ["ESNext", "DOM", "DOM.Iterable"]
   },
   "extends": [],
-  "exclude": ["node_modules"],
-  "include": ["src/**/*.ts"]
+  "exclude": ["node_modules", "scripts/template", "scripts/template/**/*.ts"],
+  "include": [
+    "src/**/*.ts",
+    "scripts/template/templateService.ts",
+    "scripts/template/templateRouter.ts",
+    "scripts/template/templateModel.ts"
+  ]
 }

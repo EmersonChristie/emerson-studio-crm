@@ -42,11 +42,14 @@ describe('User API Endpoints', () => {
 
     it('should return a not found error for non-existent ID', async () => {
       // Arrange
-      const testId = Number.MAX_SAFE_INTEGER;
+      const testId = 214748364; // Maximum value for a 32-bit signed integer
 
       // Act
       const response = await request(app).get(`/users/${testId}`);
       const responseBody: ServiceResponse = response.body;
+
+      console.log('Error: ', responseBody);
+      console.log('STATUS CODE');
 
       // Assert
       expect(response.statusCode).toEqual(StatusCodes.NOT_FOUND);

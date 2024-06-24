@@ -1,19 +1,16 @@
 import { extendZodWithOpenApi } from '@asteasolutions/zod-to-openapi';
 import { z } from 'zod';
+import { User as PrismaUser } from '@prisma/client';
+
+import { UserSchema as ZodUserSchema } from '@/common/zod/schemas';
 
 import { commonValidations } from '@/common/utils/commonValidation';
 
 extendZodWithOpenApi(z);
 
-export type User = z.infer<typeof UserSchema>;
-export const UserSchema = z.object({
-  id: z.number(),
-  name: z.string(),
-  email: z.string().email(),
-  age: z.number(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
-});
+export type User = PrismaUser;
+
+export const UserSchema = ZodUserSchema;
 
 // Input Validation for 'GET users/:id' endpoint
 export const GetUserSchema = z.object({
