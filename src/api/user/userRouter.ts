@@ -2,7 +2,15 @@ import { OpenAPIRegistry } from '@asteasolutions/zod-to-openapi';
 import express, { Request, Response, Router } from 'express';
 import { z } from 'zod';
 
-import { GetUserSchema, UserSchema } from '@/api/user/userModel';
+import {
+  GetUserSchema,
+  UserSchema,
+  LoginSchema,
+  RegisterSchema,
+  RequestPasswordResetSchema,
+  ResetPasswordSchema,
+  ConfirmEmailSchema,
+} from '@/api/user/userModel';
 import { userService } from '@/api/user/userService';
 import { createApiResponse } from '@/api-docs/openAPIResponseBuilders';
 import { handleServiceResponse, validateRequest } from '@/common/utils/httpHandlers';
@@ -37,6 +45,125 @@ export const userRouter: Router = (() => {
   router.get('/:id', validateRequest(GetUserSchema), async (req: Request, res: Response) => {
     const id = parseInt(req.params.id as string, 10);
     const serviceResponse = await userService.findById(id);
+    handleServiceResponse(serviceResponse, res);
+  });
+
+  // Registration Route
+  userRegistry.registerPath({
+    method: 'post',
+    path: '/users/register',
+    tags: ['User'],
+    request: {
+      body: {
+        content: {
+          'application/json': {
+            schema: RegisterSchema,
+          },
+        },
+      },
+    },
+    responses: createApiResponse(z.object({ message: z.string() }), 'User registered successfully'),
+  });
+
+  router.post('/register', validateRequest(RegisterSchema), async (req: Request, res: Response) => {
+    const { email, password, name } = req.body;
+    const serviceResponse = await userService.register({ email, password, name });
+    handleServiceResponse(serviceResponse, res);
+  });
+
+  // Login Route
+  userRegistry.registerPath({
+    method: 'post',
+    path: '/users/login',
+    tags: ['User'],
+    request: {
+      body: {
+        content: {
+          'application/json': {
+            schema: LoginSchema,
+          },
+        },
+      },
+    },
+    responses: createApiResponse(z.object({ token: z.string() }), 'Login successful'),
+  });
+
+  router.post('/login', validateRequest(LoginSchema), async (req: Request, res: Response) => {
+    const { email, password } = req.body;
+    const serviceResponse = await userService.login({ email, password });
+    handleServiceResponse(serviceResponse, res);
+  });
+
+  // Request Password Reset Route
+  userRegistry.registerPath({
+    method: 'post',
+    path: '/users/request-password-reset',
+    tags: ['User'],
+    request: {
+      body: {
+        content: {
+          'application/json': {
+            schema: RequestPasswordResetSchema,
+          },
+        },
+      },
+    },
+    responses: createApiResponse(z.object({ message: z.string() }), 'Password reset email sent'),
+  });
+
+  router.post(
+    '/request-password-reset',
+    validateRequest(RequestPasswordResetSchema),
+    async (req: Request, res: Response) => {
+      const { email } = req.body;
+      const serviceResponse = await userService.requestPasswordReset({ email });
+      handleServiceResponse(serviceResponse, res);
+    }
+  );
+
+  // Reset Password Route
+  userRegistry.registerPath({
+    method: 'post',
+    path: '/users/reset-password',
+    tags: ['User'],
+    request: {
+      body: {
+        content: {
+          'application/json': {
+            schema: ResetPasswordSchema,
+          },
+        },
+      },
+    },
+    responses: createApiResponse(z.object({ message: z.string() }), 'Password reset successfully'),
+  });
+
+  router.post('/reset-password', validateRequest(ResetPasswordSchema), async (req: Request, res: Response) => {
+    const { token, password } = req.body;
+    const serviceResponse = await userService.resetPassword({ token, newPassword: password });
+    handleServiceResponse(serviceResponse, res);
+  });
+
+  // Confirm Email Route
+  userRegistry.registerPath({
+    method: 'post',
+    path: '/users/confirm-email',
+    tags: ['User'],
+    request: {
+      body: {
+        content: {
+          'application/json': {
+            schema: ConfirmEmailSchema,
+          },
+        },
+      },
+    },
+    responses: createApiResponse(z.object({ message: z.string() }), 'Email confirmed successfully'),
+  });
+
+  router.post('/confirm-email', validateRequest(ConfirmEmailSchema), async (req: Request, res: Response) => {
+    const { token } = req.body;
+    const serviceResponse = await userService.confirmEmail({ token });
     handleServiceResponse(serviceResponse, res);
   });
 

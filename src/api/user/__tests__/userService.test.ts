@@ -4,6 +4,16 @@ import { Mock } from 'vitest';
 import { User } from '@/api/user/userModel';
 import { userRepository } from '@/api/user/userRepository';
 import { userService } from '@/api/user/userService';
+import {
+  RegisterSchema,
+  LoginSchema,
+  RequestPasswordResetSchema,
+  ResetPasswordSchema,
+  ConfirmEmailSchema,
+} from '@/api/user/userModel';
+import { auth } from '@/common/utils/authentication';
+
+const { generateToken, hashPassword, verifyPassword, generateSalt } = auth;
 
 vi.mock('@/api/user/userRepository');
 vi.mock('@/server', () => ({
@@ -146,6 +156,374 @@ describe('userService', () => {
       expect(result.success).toBeFalsy();
       expect(result.message).toContain('User not found');
       expect(result.responseObject).toBeNull();
+    });
+  });
+
+  describe('register', () => {
+    it('registers a new user', async () => {
+      // Arrange
+      const userData = {
+        email: 'test@example.com',
+        password: 'password123',
+        name: 'Test User',
+        age: 0,
+        role: 'user',
+        organizationId: null,
+      };
+      const mockUser = {
+        id: 1,
+        ...userData,
+        emailConfirmed: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        salt: 'salt',
+        token: null,
+        tokenExpiry: null,
+        resetToken: null,
+        resetTokenExpiry: null,
+        emailConfirmToken: 'mockToken',
+        emailConfirmTokenExpiry: new Date(Date.now() + 3600000),
+        emailConfirmedAt: null,
+      };
+      vi.spyOn(userRepository, 'findUserByEmailAsync').mockResolvedValue(null);
+      vi.spyOn(userRepository, 'createAsync').mockResolvedValue(mockUser);
+      vi.spyOn(auth, 'generateToken').mockResolvedValue('mockToken');
+      vi.spyOn(auth, 'hashPassword').mockResolvedValue('hashedPassword');
+      vi.spyOn(auth, 'generateSalt').mockResolvedValue('salt');
+      vi.spyOn(auth, 'getConfirmTokenLink').mockResolvedValue('http://localhost:3000/confirm/mockToken');
+
+      // Act
+      const result = await userService.register(userData);
+
+      // Assert
+      expect(result.message).toEqual({ message: 'User registered, please confirm your email' });
+      expect(userRepository.findUserByEmailAsync).toHaveBeenCalledWith(userData.email);
+      expect(userRepository.createAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email: userData.email,
+          password: 'hashedPassword',
+          name: userData.name,
+          emailConfirmToken: 'mockToken',
+          emailConfirmTokenExpiry: expect.any(Date),
+        })
+      );
+    });
+
+    it('returns error if email already in use', async () => {
+      // Arrange
+      const userData = {
+        id: 1,
+        name: 'Test User',
+        organizationId: null,
+        email: 'test@example.com',
+        age: 0,
+        role: 'user',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        password: 'password123',
+        salt: 'salt',
+        token: null,
+        tokenExpiry: null,
+        resetToken: null,
+        resetTokenExpiry: null,
+        emailConfirmToken: null,
+        emailConfirmTokenExpiry: null,
+        emailConfirmedAt: null,
+        emailConfirmed: false,
+      };
+
+      vi.spyOn(userRepository, 'findUserByEmailAsync').mockResolvedValue(userData);
+
+      // Act
+      const result = await userService.register(userData);
+
+      // Assert
+      expect(result).toEqual({ error: 'Email already in use' });
+      expect(userRepository.findUserByEmailAsync).toHaveBeenCalledWith(userData.email);
+      expect(userRepository.createAsync).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('login', () => {
+    it('logs in a user with valid credentials', async () => {
+      // Arrange
+      const loginData = { email: 'test@example.com', password: 'password123' };
+      const mockUser = {
+        id: 1,
+        email: loginData.email,
+        name: 'Test User',
+        age: 0,
+        role: 'user',
+        organizationId: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        emailConfirmed: true,
+        password: 'hashedPassword',
+        salt: 'salt',
+        token: null,
+        tokenExpiry: null,
+        resetToken: null,
+        resetTokenExpiry: null,
+        emailConfirmToken: null,
+        emailConfirmTokenExpiry: null,
+        emailConfirmedAt: null,
+      };
+      vi.spyOn(userRepository, 'findUserByEmailAsync').mockResolvedValue(mockUser);
+      vi.spyOn(auth, 'verifyPassword').mockResolvedValue(true);
+      vi.spyOn(auth, 'generateToken').mockResolvedValue('mockToken');
+
+      // Act
+      const result = await userService.login(loginData);
+
+      // Assert
+      expect(result).toEqual({ token: 'mockToken' });
+      expect(userRepository.findUserByEmailAsync).toHaveBeenCalledWith(loginData.email);
+      expect(auth.verifyPassword).toHaveBeenCalledWith(loginData.password, 'salt', 'hashedPassword');
+      expect(userRepository.updateUserTokenAsync).toHaveBeenCalledWith(mockUser.id, 'mockToken', expect.any(Date));
+    });
+
+    it('returns error for invalid credentials', async () => {
+      // Arrange
+      const loginData = { email: 'test@example.com', password: 'password123' };
+      const mockUser = {
+        id: 1,
+        email: loginData.email,
+        name: 'Test User',
+        age: 0,
+        role: 'user',
+        organizationId: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        emailConfirmed: true,
+        password: 'hashedPassword',
+        salt: 'salt',
+        token: null,
+        tokenExpiry: null,
+        resetToken: null,
+        resetTokenExpiry: null,
+        emailConfirmToken: null,
+        emailConfirmTokenExpiry: null,
+        emailConfirmedAt: null,
+      };
+      vi.spyOn(userRepository, 'findUserByEmailAsync').mockResolvedValue(mockUser);
+      vi.spyOn(auth, 'verifyPassword').mockResolvedValue(false);
+
+      // Act
+      const result = await userService.login(loginData);
+
+      // Assert
+      expect(result).toEqual({ error: 'Invalid email or password' });
+      expect(userRepository.findUserByEmailAsync).toHaveBeenCalledWith(loginData.email);
+      expect(auth.verifyPassword).toHaveBeenCalledWith(loginData.password, 'salt', 'hashedPassword');
+      expect(userRepository.updateUserTokenAsync).not.toHaveBeenCalled();
+    });
+
+    it('returns error if email not confirmed', async () => {
+      // Arrange
+      const loginData = { email: 'test@example.com', password: 'password123' };
+      const mockUser = {
+        id: 1,
+        email: loginData.email,
+        name: 'Test User',
+        age: 0,
+        role: 'user',
+        organizationId: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        emailConfirmed: false,
+        password: 'hashedPassword',
+        salt: 'salt',
+        token: null,
+        tokenExpiry: null,
+        resetToken: null,
+        resetTokenExpiry: null,
+        emailConfirmToken: null,
+        emailConfirmTokenExpiry: null,
+        emailConfirmedAt: null,
+      };
+      vi.spyOn(userRepository, 'findUserByEmailAsync').mockResolvedValue(mockUser);
+
+      // Act
+      const result = await userService.login(loginData);
+
+      // Assert
+      expect(result).toEqual({ error: 'Email not confirmed' });
+      expect(userRepository.findUserByEmailAsync).toHaveBeenCalledWith(loginData.email);
+      expect(auth.verifyPassword).not.toHaveBeenCalled();
+      expect(userRepository.updateUserTokenAsync).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('requestPasswordReset', () => {
+    it('sends a password reset email for a valid email', async () => {
+      // Arrange
+      const emailData = { email: 'test@example.com' };
+      const mockUser = {
+        id: 1,
+        email: emailData.email,
+        name: 'Test User',
+        age: 0,
+        role: 'user',
+        organizationId: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        emailConfirmed: true,
+        password: 'hashedPassword',
+        salt: 'salt',
+        token: null,
+        tokenExpiry: null,
+        resetToken: 'mockToken',
+        resetTokenExpiry: new Date(Date.now() + 3600000),
+        emailConfirmToken: null,
+        emailConfirmTokenExpiry: null,
+        emailConfirmedAt: null,
+      };
+      vi.spyOn(userRepository, 'findUserByEmailAsync').mockResolvedValue(mockUser);
+      vi.spyOn(auth, 'generateToken').mockResolvedValue('mockToken');
+      vi.spyOn(userRepository, 'updateUserTokenAsync').mockResolvedValue(mockUser);
+      vi.spyOn(auth, 'getPasswordResetLink').mockResolvedValue('http://localhost:3000/reset/mockToken');
+
+      // Act
+      const result = await userService.requestPasswordReset(emailData);
+
+      // Assert
+      expect(result).toEqual({ message: 'Password reset email sent' });
+      expect(userRepository.findUserByEmailAsync).toHaveBeenCalledWith(emailData.email);
+      expect(auth.generateToken).toHaveBeenCalled();
+      expect(userRepository.updateUserTokenAsync).toHaveBeenCalledWith(mockUser.id, 'mockToken', expect.any(Date));
+    });
+
+    it('returns error if email not found', async () => {
+      // Arrange
+      const emailData = { email: 'test@example.com' };
+      vi.spyOn(userRepository, 'findUserByEmailAsync').mockResolvedValue(null);
+
+      // Act
+      const result = await userService.requestPasswordReset(emailData);
+
+      // Assert
+      expect(result).toEqual({ error: 'Email not found' });
+      expect(userRepository.findUserByEmailAsync).toHaveBeenCalledWith(emailData.email);
+      expect(auth.generateToken).not.toHaveBeenCalled();
+      expect(userRepository.updateUserTokenAsync).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('resetPassword', () => {
+    it('resets the password for a valid token', async () => {
+      // Arrange
+      const resetData = { token: 'mockToken', newPassword: 'newPassword123' };
+      const mockUser = {
+        id: 1,
+        email: 'test@example.com',
+        name: 'Test User',
+        age: 0,
+        role: 'user',
+        organizationId: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        emailConfirmed: true,
+        password: 'hashedPassword',
+        salt: 'salt',
+        token: null,
+        tokenExpiry: null,
+        resetToken: 'mockToken',
+        resetTokenExpiry: new Date(Date.now() + 3600000),
+        emailConfirmToken: null,
+        emailConfirmTokenExpiry: null,
+        emailConfirmedAt: null,
+      };
+      vi.spyOn(userRepository, 'findUserByTokenAsync').mockResolvedValue(mockUser);
+      vi.spyOn(auth, 'generateSalt').mockResolvedValue('newSalt');
+      vi.spyOn(auth, 'hashPassword').mockResolvedValue('newHashedPassword');
+      vi.spyOn(userRepository, 'updateAsync').mockResolvedValue(mockUser);
+
+      // Act
+      const result = await userService.resetPassword(resetData);
+
+      // Assert
+      expect(result).toEqual({ message: 'Password reset successfully' });
+      expect(userRepository.findUserByTokenAsync).toHaveBeenCalledWith('mockToken');
+      expect(auth.generateSalt).toHaveBeenCalled();
+      expect(auth.hashPassword).toHaveBeenCalledWith('newPassword123', 'newSalt');
+      expect(userRepository.updateAsync).toHaveBeenCalledWith(mockUser.id, {
+        password: 'newHashedPassword',
+        salt: 'newSalt',
+        resetToken: null,
+        resetTokenExpiry: null,
+      });
+    });
+
+    it('returns error for invalid or expired token', async () => {
+      // Arrange
+      const resetData = { token: 'mockToken', newPassword: 'newPassword123' };
+      vi.spyOn(userRepository, 'findUserByTokenAsync').mockResolvedValue(null);
+
+      // Act
+      const result = await userService.resetPassword(resetData);
+
+      // Assert
+      expect(result).toEqual({ error: 'Invalid or expired token' });
+      expect(userRepository.findUserByTokenAsync).toHaveBeenCalledWith('mockToken');
+      expect(auth.generateSalt).not.toHaveBeenCalled();
+      expect(auth.hashPassword).not.toHaveBeenCalled();
+      expect(userRepository.updateAsync).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('confirmEmail', () => {
+    it('confirms the email for a valid token', async () => {
+      // Arrange
+      const confirmData = { token: 'mockToken' };
+      const mockUser = {
+        id: 1,
+        email: 'test@example.com',
+        name: 'Test User',
+        age: 0,
+        role: 'user',
+        organizationId: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        emailConfirmed: true,
+        password: 'hashedPassword',
+        salt: 'salt',
+        token: null,
+        tokenExpiry: null,
+        resetToken: null,
+        resetTokenExpiry: null,
+        emailConfirmToken: 'mockToken',
+        emailConfirmTokenExpiry: new Date(Date.now() + 3600000),
+        emailConfirmedAt: null,
+      };
+      vi.spyOn(userRepository, 'findUserByTokenAsync').mockResolvedValue(mockUser);
+      vi.spyOn(userRepository, 'updateAsync').mockResolvedValue(mockUser);
+
+      // Act
+      const result = await userService.confirmEmail(confirmData);
+
+      // Assert
+      expect(result).toEqual({ message: 'Email confirmed successfully' });
+      expect(userRepository.findUserByTokenAsync).toHaveBeenCalledWith('mockToken');
+      expect(userRepository.updateAsync).toHaveBeenCalledWith(mockUser.id, {
+        emailConfirmed: true,
+        emailConfirmToken: null,
+        emailConfirmTokenExpiry: null,
+        emailConfirmedAt: expect.any(Date),
+      });
+    });
+
+    it('returns error for invalid or expired token', async () => {
+      // Arrange
+      const confirmData = { token: 'mockToken' };
+      vi.spyOn(userRepository, 'findUserByTokenAsync').mockResolvedValue(null);
+
+      // Act
+      const result = await userService.confirmEmail(confirmData);
+
+      // Assert
+      expect(result).toEqual({ error: 'Invalid or expired token' });
+      expect(userRepository.findUserByTokenAsync).toHaveBeenCalledWith('mockToken');
+      expect(userRepository.updateAsync).not.toHaveBeenCalled();
     });
   });
 });
