@@ -1,6 +1,6 @@
 import { StatusCodes } from 'http-status-codes';
 import z from 'zod';
-import { User } from '@/api/user/userModel';
+import { User, SafeUser } from '@/api/user/userModel';
 import { userRepository } from '@/api/user/userRepository';
 import { ResponseStatus, ServiceResponse } from '@/common/models/serviceResponse';
 import { logger } from '@/server';
@@ -15,13 +15,16 @@ import {
 
 export const userService = {
   // Retrieves all users from the database
-  findAll: async (): Promise<ServiceResponse<User[] | null>> => {
+  findAll: async (): Promise<ServiceResponse<SafeUser[] | null>> => {
     try {
       const users = await userRepository.findAllAsync();
       if (!users) {
         return new ServiceResponse(ResponseStatus.Failed, 'No Users found', null, StatusCodes.NOT_FOUND);
       }
-      return new ServiceResponse<User[]>(ResponseStatus.Success, 'Users found', users, StatusCodes.OK);
+
+      const safeUsers = await users.map((user) => auth.getSafeUser(user));
+
+      return new ServiceResponse<SafeUser[]>(ResponseStatus.Success, 'Users found', safeUsers, StatusCodes.OK);
     } catch (ex) {
       const errorMessage = `Error finding all users: $${(ex as Error).message}`;
       logger.error(errorMessage);
@@ -30,13 +33,18 @@ export const userService = {
   },
 
   // Retrieves a single user by their ID
-  findById: async (id: number): Promise<ServiceResponse<User | null>> => {
+  findById: async (id: number): Promise<ServiceResponse<SafeUser | null>> => {
     try {
       const user = await userRepository.findByIdAsync(id);
       if (!user) {
         return new ServiceResponse(ResponseStatus.Failed, 'User not found', null, StatusCodes.NOT_FOUND);
       }
-      return new ServiceResponse<User>(ResponseStatus.Success, 'User found', user, StatusCodes.OK);
+      return new ServiceResponse<SafeUser>(
+        ResponseStatus.Success,
+        'User found',
+        auth.getSafeUser(user),
+        StatusCodes.OK
+      );
     } catch (ex) {
       const errorMessage = `Error finding user with id ${id}:, ${(ex as Error).message}`;
       logger.error(errorMessage);
@@ -45,7 +53,7 @@ export const userService = {
   },
 
   // Registers a User
-  register: async (data: z.infer<typeof RegisterSchema>): Promise<ServiceResponse<User | null>> => {
+  register: async (data: z.infer<typeof RegisterSchema>): Promise<ServiceResponse<SafeUser | null>> => {
     try {
       const { email, password, name } = data;
 
@@ -93,7 +101,14 @@ export const userService = {
       // TODO: Send email confirmation email
       // await emailService.sendEmailConfirmation(newUser.email, emailConfirmUrl);
 
-      return new ServiceResponse<User>(ResponseStatus.Success, 'User created', newUser, StatusCodes.CREATED);
+      const safeUser = auth.getSafeUser(newUser);
+
+      return new ServiceResponse<SafeUser>(
+        ResponseStatus.Success,
+        'User registered, please confirm you email.',
+        safeUser,
+        StatusCodes.CREATED
+      );
     } catch (ex) {
       const errorMessage = `Error creating user: ${(ex as Error).message}`;
       logger.error(errorMessage);
@@ -101,9 +116,10 @@ export const userService = {
     }
   },
 
-  login: async (data: z.infer<typeof LoginSchema>): Promise<ServiceResponse<User | null>> => {
+  login: async (data: z.infer<typeof LoginSchema>): Promise<ServiceResponse<SafeUser | null>> => {
+    const { email, password } = data;
+
     try {
-      const { email, password } = data;
       const user = await userRepository.findUserByEmailAsync(email);
       if (!user) {
         return new ServiceResponse(ResponseStatus.Failed, 'User not found', null, StatusCodes.NOT_FOUND);
@@ -132,7 +148,9 @@ export const userService = {
         return new ServiceResponse(ResponseStatus.Failed, 'Error logging in', null, StatusCodes.INTERNAL_SERVER_ERROR);
       }
 
-      return new ServiceResponse<User>(ResponseStatus.Success, 'User logged in', user, StatusCodes.OK);
+      const safeUser = auth.getSafeUser(updatedUser);
+
+      return new ServiceResponse<SafeUser>(ResponseStatus.Success, 'User Login Successful', safeUser, StatusCodes.OK);
     } catch (ex) {
       const errorMessage = `Error logging in: ${(ex as Error).message}`;
       logger.error(errorMessage);
@@ -177,12 +195,17 @@ export const userService = {
     }
   },
 
-  resetPassword: async (data: z.infer<typeof ResetPasswordSchema>): Promise<ServiceResponse<User | null>> => {
+  resetPassword: async (data: z.infer<typeof ResetPasswordSchema>): Promise<ServiceResponse<SafeUser | null>> => {
     try {
       const { token, newPassword } = data;
       const user = await userRepository.findUserByTokenAsync(token);
       if (!user) {
-        return new ServiceResponse(ResponseStatus.Failed, 'Invalid reset token', null, StatusCodes.BAD_REQUEST);
+        return new ServiceResponse(
+          ResponseStatus.Failed,
+          'Invalid or expired reset token',
+          null,
+          StatusCodes.UNAUTHORIZED
+        );
       }
 
       const salt = await auth.generateSalt();
@@ -204,10 +227,12 @@ export const userService = {
         );
       }
 
-      return new ServiceResponse<User>(
+      const safeUser = auth.getSafeUser(updatedUser);
+
+      return new ServiceResponse<SafeUser>(
         ResponseStatus.Success,
         'Password reset successfully!',
-        updatedUser,
+        safeUser,
         StatusCodes.OK
       );
     } catch (ex) {
@@ -217,12 +242,12 @@ export const userService = {
     }
   },
 
-  confirmEmail: async (data: z.infer<typeof ConfirmEmailSchema>): Promise<ServiceResponse<User | null>> => {
+  confirmEmail: async (data: z.infer<typeof ConfirmEmailSchema>): Promise<ServiceResponse<SafeUser | null>> => {
     try {
-      const { token: confirmToken } = data;
-      const user = await userRepository.findUserByTokenAsync(confirmToken);
+      const { emailConfirmToken } = data;
+      const user = await userRepository.findUserByTokenAsync(emailConfirmToken);
       if (!user || !user.emailConfirmTokenExpiry || user.emailConfirmTokenExpiry < new Date()) {
-        return new ServiceResponse(ResponseStatus.Failed, 'Invalid confirm token', null, StatusCodes.BAD_REQUEST);
+        return new ServiceResponse(ResponseStatus.Failed, 'Invalid confirm token', null, StatusCodes.UNAUTHORIZED);
       }
 
       user.emailConfirmed = true;
@@ -241,7 +266,9 @@ export const userService = {
         );
       }
 
-      return new ServiceResponse<User>(ResponseStatus.Success, 'Email confirmed', updatedUser, StatusCodes.OK);
+      const safeUser = auth.getSafeUser(updatedUser);
+
+      return new ServiceResponse<SafeUser>(ResponseStatus.Success, 'Email confirmed', safeUser, StatusCodes.OK);
     } catch (ex) {
       const errorMessage = `Error confirming email: ${(ex as Error).message}`;
       logger.error(errorMessage);

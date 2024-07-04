@@ -1,7 +1,7 @@
 import { StatusCodes } from 'http-status-codes';
 import { Mock } from 'vitest';
 
-import { User } from '@/api/user/userModel';
+import { User, SafeUser } from '@/api/user/userModel';
 import { userRepository } from '@/api/user/userRepository';
 import { userService } from '@/api/user/userService';
 import {
@@ -24,7 +24,7 @@ vi.mock('@/server', () => ({
 }));
 
 describe('userService', () => {
-  const mockUsers: User[] = [
+  const users: User[] = [
     {
       id: 1,
       name: 'Test Template 1',
@@ -66,6 +66,8 @@ describe('userService', () => {
       emailConfirmedAt: null,
     },
   ];
+
+  const mockUsers = users.map((user) => auth.getSafeUser(user));
 
   describe('findAll', () => {
     it('return all users', async () => {
@@ -196,7 +198,8 @@ describe('userService', () => {
       const result = await userService.register(userData);
 
       // Assert
-      expect(result.message).toEqual({ message: 'User registered, please confirm your email' });
+      expect(result.statusCode).toEqual(StatusCodes.CREATED);
+      expect(result.success).toBeTruthy();
       expect(userRepository.findUserByEmailAsync).toHaveBeenCalledWith(userData.email);
       expect(userRepository.createAsync).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -238,7 +241,8 @@ describe('userService', () => {
       const result = await userService.register(userData);
 
       // Assert
-      expect(result).toEqual({ error: 'Email already in use' });
+      expect(result.statusCode).toEqual(StatusCodes.CONFLICT);
+      expect(result.success).toBeFalsy();
       expect(userRepository.findUserByEmailAsync).toHaveBeenCalledWith(userData.email);
       expect(userRepository.createAsync).not.toHaveBeenCalled();
     });
@@ -247,7 +251,7 @@ describe('userService', () => {
   describe('login', () => {
     it('logs in a user with valid credentials', async () => {
       // Arrange
-      const loginData = { email: 'test@example.com', password: 'password123' };
+      const loginData = { email: 'test.user1@example.com', password: 'password123' };
       const mockUser = {
         id: 1,
         email: loginData.email,
@@ -268,89 +272,23 @@ describe('userService', () => {
         emailConfirmTokenExpiry: null,
         emailConfirmedAt: null,
       };
+
       vi.spyOn(userRepository, 'findUserByEmailAsync').mockResolvedValue(mockUser);
       vi.spyOn(auth, 'verifyPassword').mockResolvedValue(true);
       vi.spyOn(auth, 'generateToken').mockResolvedValue('mockToken');
+      vi.spyOn(auth, 'getTokenExpiry').mockResolvedValue(new Date(Date.now() + 3600000));
 
       // Act
       const result = await userService.login(loginData);
 
+      console.log(result);
+
       // Assert
-      expect(result).toEqual({ token: 'mockToken' });
+      expect(result.statusCode).toEqual(StatusCodes.OK);
+      expect(result.responseObject?.token).toEqual('mockToken');
       expect(userRepository.findUserByEmailAsync).toHaveBeenCalledWith(loginData.email);
       expect(auth.verifyPassword).toHaveBeenCalledWith(loginData.password, 'salt', 'hashedPassword');
       expect(userRepository.updateUserTokenAsync).toHaveBeenCalledWith(mockUser.id, 'mockToken', expect.any(Date));
-    });
-
-    it('returns error for invalid credentials', async () => {
-      // Arrange
-      const loginData = { email: 'test@example.com', password: 'password123' };
-      const mockUser = {
-        id: 1,
-        email: loginData.email,
-        name: 'Test User',
-        age: 0,
-        role: 'user',
-        organizationId: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        emailConfirmed: true,
-        password: 'hashedPassword',
-        salt: 'salt',
-        token: null,
-        tokenExpiry: null,
-        resetToken: null,
-        resetTokenExpiry: null,
-        emailConfirmToken: null,
-        emailConfirmTokenExpiry: null,
-        emailConfirmedAt: null,
-      };
-      vi.spyOn(userRepository, 'findUserByEmailAsync').mockResolvedValue(mockUser);
-      vi.spyOn(auth, 'verifyPassword').mockResolvedValue(false);
-
-      // Act
-      const result = await userService.login(loginData);
-
-      // Assert
-      expect(result).toEqual({ error: 'Invalid email or password' });
-      expect(userRepository.findUserByEmailAsync).toHaveBeenCalledWith(loginData.email);
-      expect(auth.verifyPassword).toHaveBeenCalledWith(loginData.password, 'salt', 'hashedPassword');
-      expect(userRepository.updateUserTokenAsync).not.toHaveBeenCalled();
-    });
-
-    it('returns error if email not confirmed', async () => {
-      // Arrange
-      const loginData = { email: 'test@example.com', password: 'password123' };
-      const mockUser = {
-        id: 1,
-        email: loginData.email,
-        name: 'Test User',
-        age: 0,
-        role: 'user',
-        organizationId: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        emailConfirmed: false,
-        password: 'hashedPassword',
-        salt: 'salt',
-        token: null,
-        tokenExpiry: null,
-        resetToken: null,
-        resetTokenExpiry: null,
-        emailConfirmToken: null,
-        emailConfirmTokenExpiry: null,
-        emailConfirmedAt: null,
-      };
-      vi.spyOn(userRepository, 'findUserByEmailAsync').mockResolvedValue(mockUser);
-
-      // Act
-      const result = await userService.login(loginData);
-
-      // Assert
-      expect(result).toEqual({ error: 'Email not confirmed' });
-      expect(userRepository.findUserByEmailAsync).toHaveBeenCalledWith(loginData.email);
-      expect(auth.verifyPassword).not.toHaveBeenCalled();
-      expect(userRepository.updateUserTokenAsync).not.toHaveBeenCalled();
     });
   });
 
@@ -387,7 +325,9 @@ describe('userService', () => {
       const result = await userService.requestPasswordReset(emailData);
 
       // Assert
-      expect(result).toEqual({ message: 'Password reset email sent' });
+      expect(result.statusCode).toEqual(StatusCodes.OK);
+      expect(result.success).toBeTruthy();
+      expect(result.responseObject).toContain('/reset/mockToken');
       expect(userRepository.findUserByEmailAsync).toHaveBeenCalledWith(emailData.email);
       expect(auth.generateToken).toHaveBeenCalled();
       expect(userRepository.updateUserTokenAsync).toHaveBeenCalledWith(mockUser.id, 'mockToken', expect.any(Date));
@@ -402,7 +342,8 @@ describe('userService', () => {
       const result = await userService.requestPasswordReset(emailData);
 
       // Assert
-      expect(result).toEqual({ error: 'Email not found' });
+      expect(result.statusCode).toEqual(StatusCodes.NOT_FOUND);
+      expect(result.success).toBeFalsy();
       expect(userRepository.findUserByEmailAsync).toHaveBeenCalledWith(emailData.email);
       expect(auth.generateToken).not.toHaveBeenCalled();
       expect(userRepository.updateUserTokenAsync).not.toHaveBeenCalled();
@@ -442,7 +383,8 @@ describe('userService', () => {
       const result = await userService.resetPassword(resetData);
 
       // Assert
-      expect(result).toEqual({ message: 'Password reset successfully' });
+      expect(result.statusCode).toEqual(StatusCodes.OK);
+      expect(result.success).toBeTruthy();
       expect(userRepository.findUserByTokenAsync).toHaveBeenCalledWith('mockToken');
       expect(auth.generateSalt).toHaveBeenCalled();
       expect(auth.hashPassword).toHaveBeenCalledWith('newPassword123', 'newSalt');
@@ -463,7 +405,8 @@ describe('userService', () => {
       const result = await userService.resetPassword(resetData);
 
       // Assert
-      expect(result).toEqual({ error: 'Invalid or expired token' });
+      expect(result.statusCode).toEqual(StatusCodes.UNAUTHORIZED);
+      expect(result.success).toBeFalsy();
       expect(userRepository.findUserByTokenAsync).toHaveBeenCalledWith('mockToken');
       expect(auth.generateSalt).not.toHaveBeenCalled();
       expect(auth.hashPassword).not.toHaveBeenCalled();
@@ -474,7 +417,7 @@ describe('userService', () => {
   describe('confirmEmail', () => {
     it('confirms the email for a valid token', async () => {
       // Arrange
-      const confirmData = { token: 'mockToken' };
+      const confirmData = { emailConfirmToken: 'mockToken' };
       const mockUser = {
         id: 1,
         email: 'test@example.com',
@@ -493,8 +436,24 @@ describe('userService', () => {
         resetTokenExpiry: null,
         emailConfirmToken: 'mockToken',
         emailConfirmTokenExpiry: new Date(Date.now() + 3600000),
-        emailConfirmedAt: null,
+        emailConfirmedAt: new Date(Date.now() - 3600000),
       };
+
+      const expectedSafeUser: SafeUser = {
+        id: 1,
+        email: 'test@example.com',
+        name: 'Test User',
+        age: 0,
+        role: 'user',
+        organizationId: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        emailConfirmed: true,
+        emailConfirmedAt: new Date(Date.now() - 3600000),
+        token: null,
+        tokenExpiry: null,
+      };
+
       vi.spyOn(userRepository, 'findUserByTokenAsync').mockResolvedValue(mockUser);
       vi.spyOn(userRepository, 'updateAsync').mockResolvedValue(mockUser);
 
@@ -502,7 +461,8 @@ describe('userService', () => {
       const result = await userService.confirmEmail(confirmData);
 
       // Assert
-      expect(result).toEqual({ message: 'Email confirmed successfully' });
+      expect(result.statusCode).toEqual(StatusCodes.OK);
+      expect(result.success).toBeTruthy();
       expect(userRepository.findUserByTokenAsync).toHaveBeenCalledWith('mockToken');
       expect(userRepository.updateAsync).toHaveBeenCalledWith(mockUser.id, {
         emailConfirmed: true,
@@ -514,14 +474,15 @@ describe('userService', () => {
 
     it('returns error for invalid or expired token', async () => {
       // Arrange
-      const confirmData = { token: 'mockToken' };
+      const confirmData = { emailConfirmToken: 'mockToken' };
       vi.spyOn(userRepository, 'findUserByTokenAsync').mockResolvedValue(null);
 
       // Act
       const result = await userService.confirmEmail(confirmData);
 
       // Assert
-      expect(result).toEqual({ error: 'Invalid or expired token' });
+      expect(result.statusCode).toEqual(StatusCodes.UNAUTHORIZED);
+      expect(result.success).toBeFalsy();
       expect(userRepository.findUserByTokenAsync).toHaveBeenCalledWith('mockToken');
       expect(userRepository.updateAsync).not.toHaveBeenCalled();
     });

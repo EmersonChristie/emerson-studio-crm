@@ -1,6 +1,7 @@
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import path from 'path';
+import { SafeUser, User } from '@/api/user/userModel';
 
 const url =
   (process.env.NODE_ENV === 'production' ? process.env.PROD_FRONTEND_URL : process.env.DEV_FRONTEND_URL) ||
@@ -36,5 +37,11 @@ export const auth = {
 
   getPasswordResetLink: async (token: string): Promise<string> => {
     return path.join(url, 'reset', token);
+  },
+
+  getSafeUser: (user: User): SafeUser => {
+    const { password, salt, resetToken, resetTokenExpiry, emailConfirmToken, emailConfirmTokenExpiry, ...safeUser } =
+      user;
+    return safeUser;
   },
 };

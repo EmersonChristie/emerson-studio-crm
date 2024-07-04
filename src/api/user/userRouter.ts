@@ -5,11 +5,15 @@ import { z } from 'zod';
 import {
   GetUserSchema,
   UserSchema,
+  SafeUser,
   LoginSchema,
+  PostLoginSchema,
   RegisterSchema,
+  PostRegisterSchema,
   RequestPasswordResetSchema,
   ResetPasswordSchema,
   ConfirmEmailSchema,
+  SafeUserSchema,
 } from '@/api/user/userModel';
 import { userService } from '@/api/user/userService';
 import { createApiResponse } from '@/api-docs/openAPIResponseBuilders';
@@ -57,16 +61,17 @@ export const userRouter: Router = (() => {
       body: {
         content: {
           'application/json': {
-            schema: RegisterSchema,
+            schema: PostRegisterSchema.shape.body,
           },
         },
       },
     },
-    responses: createApiResponse(z.object({ message: z.string() }), 'User registered successfully'),
+    responses: createApiResponse(SafeUserSchema, 'Success'),
   });
 
-  router.post('/register', validateRequest(RegisterSchema), async (req: Request, res: Response) => {
+  router.post('/register', validateRequest(PostRegisterSchema), async (req: Request, res: Response) => {
     const { email, password, name } = req.body;
+    console.log('email from register route: ', email);
     const serviceResponse = await userService.register({ email, password, name });
     handleServiceResponse(serviceResponse, res);
   });
@@ -162,8 +167,8 @@ export const userRouter: Router = (() => {
   });
 
   router.post('/confirm-email', validateRequest(ConfirmEmailSchema), async (req: Request, res: Response) => {
-    const { token } = req.body;
-    const serviceResponse = await userService.confirmEmail({ token });
+    const { emailConfirmToken } = req.body;
+    const serviceResponse = await userService.confirmEmail({ emailConfirmToken });
     handleServiceResponse(serviceResponse, res);
   });
 
