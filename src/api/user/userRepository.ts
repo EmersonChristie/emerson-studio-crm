@@ -41,13 +41,28 @@ export const userRepository = {
     return user;
   },
 
-  findUserByTokenAsync: async (resetToken: string): Promise<User | null> => {
+  findUserByTokenAsync: async (token: string): Promise<User | null> => {
+    const user = await prisma.user.findFirst({ where: { token } });
+    return user;
+  },
+
+  findUserByEmailConfirmTokenAsync: async (emailConfirmToken: string): Promise<User | null> => {
+    const user = await prisma.user.findFirst({ where: { emailConfirmToken } });
+    return user;
+  },
+
+  findUserByResetTokenAsync: async (resetToken: string): Promise<User | null> => {
     const user = await prisma.user.findFirst({ where: { resetToken } });
     return user;
   },
 
   updateUserTokenAsync: async (id: number, token: string, tokenExpiry: Date): Promise<User | null> => {
     const updatedUser = await prisma.user.update({ where: { id }, data: { token, tokenExpiry } });
+    return updatedUser;
+  },
+
+  updateUserResetTokenAsync: async (id: number, resetToken: string, resetTokenExpiry: Date): Promise<User | null> => {
+    const updatedUser = await prisma.user.update({ where: { id }, data: { resetToken, resetTokenExpiry } });
     return updatedUser;
   },
 };

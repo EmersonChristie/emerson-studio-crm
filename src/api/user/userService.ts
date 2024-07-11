@@ -65,7 +65,7 @@ export const userService = {
       const salt = await auth.generateSalt();
       const hashedPassword = await auth.hashPassword(password, salt);
       const emailConfirmToken = await auth.generateToken();
-      const emailConfirmTokenExpiry = await auth.getTokenExpiry();
+      const emailConfirmTokenExpiry = await auth.getTokenExpiry(168); // 1 Week
 
       const newUser = await userRepository.createAsync({
         email,
@@ -140,7 +140,7 @@ export const userService = {
       }
 
       const token = await auth.generateToken();
-      const tokenExpiry = await auth.getTokenExpiry();
+      const tokenExpiry = await auth.getTokenExpiry(168); // 1 week
 
       const updatedUser = await userRepository.updateUserTokenAsync(user.id, token, tokenExpiry);
 
@@ -171,7 +171,7 @@ export const userService = {
       const resetToken = await auth.generateToken();
       const resetTokenExpiry = await auth.getTokenExpiry();
 
-      const updatedUser = await userRepository.updateUserTokenAsync(user.id, resetToken, resetTokenExpiry);
+      const updatedUser = await userRepository.updateUserResetTokenAsync(user.id, resetToken, resetTokenExpiry);
 
       if (!updatedUser) {
         return new ServiceResponse(
@@ -187,7 +187,12 @@ export const userService = {
       // TODO: Send password reset email
       // await emailService.sendPasswordReset(user.email, resetUrl);
 
-      return new ServiceResponse<string>(ResponseStatus.Success, 'Password reset requested', resetUrl, StatusCodes.OK);
+      return new ServiceResponse<string>(
+        ResponseStatus.Success,
+        'Password reset email sent, please check your email to reset password.',
+        resetUrl,
+        StatusCodes.OK
+      );
     } catch (ex) {
       const errorMessage = `Error requesting password reset: ${(ex as Error).message}`;
       logger.error(errorMessage);
@@ -198,7 +203,7 @@ export const userService = {
   resetPassword: async (data: z.infer<typeof ResetPasswordSchema>): Promise<ServiceResponse<SafeUser | null>> => {
     try {
       const { token, newPassword } = data;
-      const user = await userRepository.findUserByTokenAsync(token);
+      const user = await userRepository.findUserByResetTokenAsync(token);
       if (!user) {
         return new ServiceResponse(
           ResponseStatus.Failed,
@@ -245,9 +250,43 @@ export const userService = {
   confirmEmail: async (data: z.infer<typeof ConfirmEmailSchema>): Promise<ServiceResponse<SafeUser | null>> => {
     try {
       const { emailConfirmToken } = data;
-      const user = await userRepository.findUserByTokenAsync(emailConfirmToken);
-      if (!user || !user.emailConfirmTokenExpiry || user.emailConfirmTokenExpiry < new Date()) {
+      const user = await userRepository.findUserByEmailConfirmTokenAsync(emailConfirmToken);
+
+      if (!user || !user.emailConfirmTokenExpiry) {
         return new ServiceResponse(ResponseStatus.Failed, 'Invalid confirm token', null, StatusCodes.UNAUTHORIZED);
+      }
+
+      // If token expired, generate new token, update user, and send email
+      if (user.emailConfirmTokenExpiry < new Date()) {
+        const emailConfirmToken = await auth.generateToken();
+        const emailConfirmTokenExpiry = await auth.getTokenExpiry(72);
+
+        user.emailConfirmed = false;
+        user.emailConfirmToken = emailConfirmToken;
+        user.emailConfirmTokenExpiry = emailConfirmTokenExpiry;
+
+        const updatedUser = await userRepository.updateAsync(user.id, user);
+
+        if (!updatedUser) {
+          return new ServiceResponse(
+            ResponseStatus.Failed,
+            'Error confirming email',
+            null,
+            StatusCodes.INTERNAL_SERVER_ERROR
+          );
+        }
+
+        const emailConfirmUrl = await auth.getConfirmTokenLink(emailConfirmToken);
+
+        // TODO: Send email confirmation email
+        // await emailService.sendEmailConfirmation(newUser.email, emailConfirmUrl);
+
+        return new ServiceResponse(
+          ResponseStatus.Failed,
+          'Email Confirm Token Expired. New Confirmation Email Sent.',
+          null,
+          StatusCodes.UNAUTHORIZED
+        );
       }
 
       user.emailConfirmed = true;

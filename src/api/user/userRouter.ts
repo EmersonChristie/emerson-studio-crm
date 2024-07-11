@@ -11,8 +11,11 @@ import {
   RegisterSchema,
   PostRegisterSchema,
   RequestPasswordResetSchema,
+  PostRequestPasswordResetSchema,
   ResetPasswordSchema,
+  PostResetPasswordSchema,
   ConfirmEmailSchema,
+  PostConfirmEmailSchema,
   SafeUserSchema,
 } from '@/api/user/userModel';
 import { userService } from '@/api/user/userService';
@@ -85,7 +88,7 @@ export const userRouter: Router = (() => {
       body: {
         content: {
           'application/json': {
-            schema: LoginSchema,
+            schema: PostLoginSchema.shape.body,
           },
         },
       },
@@ -93,9 +96,19 @@ export const userRouter: Router = (() => {
     responses: createApiResponse(z.object({ token: z.string() }), 'Login successful'),
   });
 
-  router.post('/login', validateRequest(LoginSchema), async (req: Request, res: Response) => {
+  router.post('/login', validateRequest(PostLoginSchema), async (req: Request, res: Response) => {
     const { email, password } = req.body;
     const serviceResponse = await userService.login({ email, password });
+
+    const user = serviceResponse.responseObject as SafeUser;
+    if (serviceResponse.success && user.token) {
+      res.cookie('token', user.token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+        maxAge: 1000 * 60 * 60 * 24 * 7, // 1 week
+      });
+    }
     handleServiceResponse(serviceResponse, res);
   });
 
@@ -108,7 +121,7 @@ export const userRouter: Router = (() => {
       body: {
         content: {
           'application/json': {
-            schema: RequestPasswordResetSchema,
+            schema: PostRequestPasswordResetSchema.shape.body,
           },
         },
       },
@@ -118,7 +131,7 @@ export const userRouter: Router = (() => {
 
   router.post(
     '/request-password-reset',
-    validateRequest(RequestPasswordResetSchema),
+    validateRequest(PostRequestPasswordResetSchema),
     async (req: Request, res: Response) => {
       const { email } = req.body;
       const serviceResponse = await userService.requestPasswordReset({ email });
@@ -135,7 +148,7 @@ export const userRouter: Router = (() => {
       body: {
         content: {
           'application/json': {
-            schema: ResetPasswordSchema,
+            schema: PostResetPasswordSchema.shape.body,
           },
         },
       },
@@ -143,9 +156,9 @@ export const userRouter: Router = (() => {
     responses: createApiResponse(z.object({ message: z.string() }), 'Password reset successfully'),
   });
 
-  router.post('/reset-password', validateRequest(ResetPasswordSchema), async (req: Request, res: Response) => {
-    const { token, password } = req.body;
-    const serviceResponse = await userService.resetPassword({ token, newPassword: password });
+  router.post('/reset-password', validateRequest(PostResetPasswordSchema), async (req: Request, res: Response) => {
+    const { token, newPassword } = req.body;
+    const serviceResponse = await userService.resetPassword({ token, newPassword });
     handleServiceResponse(serviceResponse, res);
   });
 
@@ -158,7 +171,7 @@ export const userRouter: Router = (() => {
       body: {
         content: {
           'application/json': {
-            schema: ConfirmEmailSchema,
+            schema: PostConfirmEmailSchema.shape.body,
           },
         },
       },
@@ -166,7 +179,7 @@ export const userRouter: Router = (() => {
     responses: createApiResponse(z.object({ message: z.string() }), 'Email confirmed successfully'),
   });
 
-  router.post('/confirm-email', validateRequest(ConfirmEmailSchema), async (req: Request, res: Response) => {
+  router.post('/confirm-email', validateRequest(PostConfirmEmailSchema), async (req: Request, res: Response) => {
     const { emailConfirmToken } = req.body;
     const serviceResponse = await userService.confirmEmail({ emailConfirmToken });
     handleServiceResponse(serviceResponse, res);

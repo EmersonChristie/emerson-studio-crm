@@ -24,6 +24,7 @@
     "src/**/*.ts",
     "scripts/template/templateService.ts",
     "scripts/template/templateRouter.ts",
-    "scripts/template/templateModel.ts"
+    "scripts/template/templateModel.ts",
+    "types/**/*.d.ts"
   ]
 }

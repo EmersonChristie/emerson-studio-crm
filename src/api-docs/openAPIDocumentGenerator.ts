@@ -2,9 +2,18 @@ import { OpenApiGeneratorV3, OpenAPIRegistry } from '@asteasolutions/zod-to-open
 
 import { healthCheckRegistry } from '@/api/healthCheck/healthCheckRouter';
 import { userRegistry } from '@/api/user/userRouter';
+import { artworkRegistry } from '@/api/artwork/artworkRouter';
 
 export function generateOpenAPIDocument() {
-  const registry = new OpenAPIRegistry([healthCheckRegistry, userRegistry]);
+  const registry = new OpenAPIRegistry([healthCheckRegistry, userRegistry, artworkRegistry]);
+
+  // Register the cookieAuth security scheme
+  const cookieAuth = registry.registerComponent('securitySchemes', 'cookieAuth', {
+    type: 'apiKey',
+    in: 'cookie',
+    name: 'token',
+  });
+
   const generator = new OpenApiGeneratorV3(registry.definitions);
 
   return generator.generateDocument({
@@ -17,5 +26,6 @@ export function generateOpenAPIDocument() {
       description: 'View the raw OpenAPI Specification in JSON format',
       url: '/swagger.json',
     },
+    security: [{ [cookieAuth.name]: [] }],
   });
 }

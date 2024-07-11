@@ -55,11 +55,23 @@ export const RequestPasswordResetSchema = z.object({
   email: commonValidations.email,
 });
 
+export const PostRequestPasswordResetSchema = z.object({
+  body: RequestPasswordResetSchema,
+});
+
 export const ResetPasswordSchema = z.object({
   newPassword: commonValidations.password,
   token: z.string(),
 });
 
+export const PostResetPasswordSchema = z.object({
+  body: ResetPasswordSchema,
+});
+
 export const ConfirmEmailSchema = z.object({
   emailConfirmToken: z.string(),
+});
+
+export const PostConfirmEmailSchema = z.object({
+  body: ConfirmEmailSchema,
 });

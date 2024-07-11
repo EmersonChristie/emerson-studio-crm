@@ -177,7 +177,7 @@ const ContactAddressSchema = z.object({
 });
 
 const ArtworkSchema = z.object({
-  id: z.number().int().optional(),
+  id: z.number().int().positive().optional(),
   title: z.string().default('Untitled'),
   description: z.string().nullable().optional(),
   price: z.number().nullable().optional(),
@@ -193,7 +193,7 @@ const ArtworkSchema = z.object({
   inquiries: z.array(InquirySchema).optional(),
   sales: z.array(SaleSchema).optional(),
   privateViews: z.array(ArtworkPrivateViewSchema).optional(),
-  createdBy: UserSchema,
+  createdBy: UserSchema.optional(),
   createdById: z.number().int(),
   offers: z.array(ArtworkOfferSchema).optional(),
 });

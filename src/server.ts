@@ -2,6 +2,7 @@ import cors from 'cors';
 import express, { Express } from 'express';
 import helmet from 'helmet';
 import { pino } from 'pino';
+import cookieParser from 'cookie-parser';
 
 // Routers
 import { contactRouter } from '@/api/contact/contactRouter';
@@ -27,6 +28,7 @@ app.use(cors({ origin: env.CORS_ORIGIN, credentials: true }));
 app.use(helmet());
 app.use(rateLimiter);
 app.use(express.json());
+app.use(cookieParser());
 
 // Request logging
 app.use(requestLogger);

@@ -26,9 +26,10 @@ export const auth = {
     return isMatch;
   },
 
-  getTokenExpiry: async (): Promise<Date> => {
-    const now = new Date();
-    return new Date(now.setHours(now.getHours() + 1)); // 1 hour from now
+  getTokenExpiry: async (numHours: number = 1): Promise<Date> => {
+    const TOKEN_EXPIRY_HOURS = numHours * 60 * 60 * 1000; // Convert milliseconds to hours
+    const emailConfirmTokenExpiry = new Date(Date.now() + TOKEN_EXPIRY_HOURS);
+    return emailConfirmTokenExpiry;
   },
 
   getConfirmTokenLink: async (token: string): Promise<string> => {
