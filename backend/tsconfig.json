@@ -19,12 +19,12 @@
     "lib": ["ESNext", "DOM", "DOM.Iterable"]
   },
   "extends": [],
-  "exclude": ["node_modules", "scripts/template", "scripts/template/**/*.ts"],
+  "exclude": ["backend/node_modules", "backend/scripts/template", "backend/scripts/template/**/*.ts"],
   "include": [
     "src/**/*.ts",
-    "scripts/template/templateService.ts",
-    "scripts/template/templateRouter.ts",
-    "scripts/template/templateModel.ts",
-    "types/**/*.d.ts"
+    "backend/scripts/template/templateService.ts",
+    "backend/scripts/template/templateRouter.ts",
+    "backend/scripts/template/templateModel.ts",
+    "backend/types/**/*.d.ts"
   ]
 }
