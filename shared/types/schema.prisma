@@ -1,0 +1,220 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+generator client {
+  provider = "prisma-client-js"
+  output   = "../../shared/types"
+}
+
+// generator zod {
+//   provider = "prisma-zod-generator"
+//   output   = "../../src/generated/zod"
+// }
+
+datasource db {
+  provider          = "postgresql"
+  url               = env("DATABASE_URL")
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
+}
+
+model User {
+  id                      Int                  @id @default(autoincrement())
+  name                    String
+  organization            Organization?        @relation(fields: [organizationId], references: [id])
+  organizationId          Int?
+  email                   String               @unique
+  age                     Int
+  role                    String               @default("user")
+  createdAt               DateTime             @default(now())
+  updatedAt               DateTime             @updatedAt
+  password                String
+  salt                    String
+  token                   String?
+  tokenExpiry             DateTime?
+  resetToken              String?
+  resetTokenExpiry        DateTime?
+  emailConfirmed          Boolean              @default(false)
+  emailConfirmToken       String?
+  emailConfirmTokenExpiry DateTime?
+  emailConfirmedAt        DateTime?
+  privateViews            ArtworkPrivateView[]
+  emailCampaigns          EmailCampaign[]
+  invoices                Invoice[]
+  contacts                Contact[]
+  artworks                Artwork[]
+}
+
+model Organization {
+  id        Int      @id @default(autoincrement())
+  name      String
+  users     User[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Artwork {
+  id           Int                  @id @default(autoincrement())
+  title        String               @default("Untitled")
+  description  String?
+  price        Float?
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @default(now()) @updatedAt
+  artist       String?
+  categories   ArtworkCategory[]
+  lists        ArtworkList[]
+  status       String               @default("available")
+  mainImage    Image?               @relation("MainImage", fields: [mainImageId], references: [id])
+  mainImageId  Int?                 @unique
+  images       Image[]              @relation("AdditionalImages")
+  inquiries    Inquiry[]
+  sales        Sale[]
+  privateViews ArtworkPrivateView[]
+  createdBy    User                 @relation(fields: [createdById], references: [id])
+  createdById  Int
+  offers       ArtworkOffer[]
+}
+
+model ArtworkCategory {
+  id          Int       @id @default(autoincrement())
+  name        String
+  artworks    Artwork[]
+  mainImage   Image?    @relation("MainImage", fields: [mainImageId], references: [id])
+  mainImageId Int?      @unique
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now()) @updatedAt
+}
+
+model ArtworkPrivateView {
+  id          Int       @id @default(autoincrement())
+  name        String
+  description String?
+  url         String
+  artworks    Artwork[]
+  contacts    Contact[]
+  createdBy   User      @relation(fields: [createdById], references: [id])
+  createdById Int
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now()) @updatedAt
+}
+
+model ArtworkOffer {
+  id        Int      @id @default(autoincrement())
+  amount    Float
+  discount  Float?
+  message   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  contact   Contact  @relation(fields: [contactId], references: [id])
+  contactId Int
+  artwork   Artwork  @relation(fields: [artworkId], references: [id])
+  artworkId Int
+}
+
+model ArtworkList {
+  id        Int       @id @default(autoincrement())
+  name      String
+  artworks  Artwork[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @default(now()) @updatedAt
+}
+
+model Contact {
+  id             Int                  @id @default(autoincrement())
+  firstName      String?
+  lastName       String?
+  email          String
+  phone          String?
+  address        ContactAddress?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @default(now()) @updatedAt
+  createdBy      User?                @relation(fields: [createdById], references: [id])
+  createdById    Int
+  inquiries      Inquiry[]
+  emailCampaigns EmailCampaign[]
+  sales          Sale[]
+  notes          String?
+  privateViews   ArtworkPrivateView[]
+  source         String?              @default("website")
+  offers         ArtworkOffer[]
+}
+
+model ContactAddress {
+  id        Int     @id @default(autoincrement())
+  street    String
+  city      String
+  state     String
+  zip       String
+  contact   Contact @relation(fields: [contactId], references: [id])
+  contactId Int     @unique
+}
+
+model Inquiry {
+  id        Int       @id @default(autoincrement())
+  message   String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @default(now()) @updatedAt
+  artworks  Artwork[]
+  contact   Contact   @relation(fields: [contactId], references: [id])
+  contactId Int
+  status    String    @default("pending")
+}
+
+model EmailCampaign {
+  id          Int       @id @default(autoincrement())
+  subject     String
+  content     String
+  sentAt      DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now()) @updatedAt
+  createdBy   User      @relation(fields: [createdById], references: [id])
+  createdById Int
+  contacts    Contact[]
+  status      String    @default("draft")
+  template    String?
+}
+
+model Sale {
+  id            Int      @id @default(autoincrement())
+  amount        Float
+  date          DateTime
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @default(now()) @updatedAt
+  contact       Contact  @relation(fields: [contactId], references: [id])
+  contactId     Int
+  artwork       Artwork  @relation(fields: [artworkId], references: [id])
+  artworkId     Int
+  invoice       Invoice? @relation(fields: [invoiceId], references: [id])
+  invoiceId     Int?
+  paymentStatus String   @default("unpaid")
+}
+
+model Invoice {
+  id                 Int      @id @default(autoincrement())
+  total              Float
+  issuedDate         DateTime
+  dueDate            DateTime
+  status             String
+  sales              Sale[]
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @default(now()) @updatedAt
+  createdBy          User?    @relation(fields: [createdById], references: [id])
+  createdById        Int
+  paymentUrl         String?
+  taxPercentage      Float?
+  discountPercentage Float?
+}
+
+model Image {
+  id                  Int              @id @default(autoincrement())
+  url                 String
+  altText             String?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @default(now()) @updatedAt
+  artworkMain         Artwork?         @relation("MainImage")
+  artwork             Artwork?         @relation("AdditionalImages", fields: [artworkId], references: [id])
+  artworkId           Int?
+  artworkCategoryMain ArtworkCategory? @relation("MainImage")
+  isMain              Boolean          @default(false)
+}
