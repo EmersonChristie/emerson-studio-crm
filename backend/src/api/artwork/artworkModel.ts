@@ -1,6 +1,7 @@
 import { extendZodWithOpenApi } from '@asteasolutions/zod-to-openapi';
 import { z } from 'zod';
-import { Prisma, Artwork as PrismaArtwork } from '@prisma/client';
+// import { Prisma, Artwork as PrismaArtwork } from '@prisma/client';
+import { Artwork as PrismaArtwork } from '@shared/types';
 import { prismaTypeToZod } from '@/common/zod/prismaToZod';
 
 import { ArtworkSchema as ZodArtworkSchema } from '@/common/zod/schemas';

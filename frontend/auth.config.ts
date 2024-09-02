@@ -47,6 +47,21 @@ import CredentialProvider from 'next-auth/providers/credentials';
 import GithubProvider from 'next-auth/providers/github';
 import axios from 'axios';
 
+// declare module 'next-auth' {
+//   interface User {
+//     token?: string;
+//   }
+//   interface Session {
+//     accessToken?: string;
+//   }
+// }
+
+// declare module 'next-auth/jwt' {
+//   interface JWT {
+//     accessToken?: string;
+//   }
+// }
+
 const authConfig = {
   providers: [
     GithubProvider({
@@ -78,9 +93,21 @@ const authConfig = {
           // console.log('Response from Login API: ', response.data);
 
           if (response.data.success) {
-            return response.data.responseObject;
+            console.log(
+              'Response from Login API: ',
+              response.data.responseObject
+            );
+            const user = response.data.responseObject;
+            return {
+              id: user.id,
+              name: user.name,
+              email: user.email,
+              token: user.token
+            };
           } else {
             // If null is returned then an error will be displayed advising the user to check their details.
+            // log an error occuring
+            console.log('Error in Login API: ', response.data.error);
             return null;
 
             // You can also Reject this callback with an Error thus the user will be sent to the error page with the error message as a query parameter
@@ -94,6 +121,38 @@ const authConfig = {
   ],
   pages: {
     signIn: '/' //sigin page
+  },
+  callbacks: {
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id;
+        token.email = user.email;
+        token.name = user.name;
+        token.accessToken = user.token;
+      }
+      console.log('JWT token: ', token);
+      return token;
+    },
+    async session({ session, token }) {
+      if (!session.user.id) {
+        session.user.id = token.id as string;
+        session.user.email = token.email as string;
+        session.user.name = token.name as string;
+      }
+      if (!session.accessToken) {
+        session.accessToken = token.accessToken as string;
+      }
+      console.log('Updated session:', session); // Debugging
+      return session;
+    },
+    async redirect({ url, baseUrl }) {
+      console.log('Redirecting to:', url); // Debugging
+
+      if (url.startsWith(baseUrl)) {
+        return url;
+      }
+      return baseUrl;
+    }
   }
 } satisfies NextAuthConfig;
 

@@ -1,7 +1,7 @@
 import { extendZodWithOpenApi } from '@asteasolutions/zod-to-openapi';
 import { z } from 'zod';
-import { User as PrismaUser } from '@prisma/client';
-
+// import { User as PrismaUser } from '@prisma/client';
+import { User as PrismaUser } from '@shared/types';
 import { UserSchema as ZodUserSchema } from '@/common/zod/schemas';
 
 import { commonValidations } from '@/common/utils/commonValidation';

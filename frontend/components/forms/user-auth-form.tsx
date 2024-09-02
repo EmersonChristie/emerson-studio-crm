@@ -9,6 +9,7 @@ import {
   FormMessage
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Loader2 } from 'lucide-react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { signIn } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
@@ -39,11 +40,17 @@ export default function UserAuthForm() {
   });
 
   const onSubmit = async (data: UserFormValue) => {
-    signIn('credentials', {
+    setLoading(true);
+    const response = await signIn('credentials', {
       email: data.email,
       password: data.password,
-      callbackUrl: callbackUrl ?? '/dashboard'
+      callbackUrl: callbackUrl || 'http://localhost:3000/dashboard'
     });
+    console.log('Sign In response: ', response);
+    if (!response?.ok) {
+      console.log('Login failed: ', response?.error);
+    }
+    setLoading(false);
   };
 
   return (
@@ -92,6 +99,7 @@ export default function UserAuthForm() {
           />
 
           <Button disabled={loading} className="ml-auto w-full" type="submit">
+            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             Continue With Email
           </Button>
         </form>
