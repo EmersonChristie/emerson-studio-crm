@@ -19,6 +19,7 @@ import {
 import { Input } from './input';
 import { Button } from './button';
 import { ScrollArea, ScrollBar } from './scroll-area';
+import { useState, useEffect } from 'react';
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -37,9 +38,41 @@ export function DataTable<TData, TValue>({
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel()
   });
+  console.log('DataTable component rendered');
 
-  /* this can be used to get the selectedrows 
+  /* this can be used to get the selectedrows
   console.log("value", table.getFilteredSelectedRowModel()); */
+
+  const [selectedRows, setSelectedRows] = useState<TData[]>([]);
+
+  useEffect(() => {
+    const updateSelectedRows = () => {
+      setSelectedRows(
+        table.getFilteredSelectedRowModel().rows.map((row) => row.original)
+      );
+    };
+
+    // Subscribe to table state changes
+    table.setOptions((prev) => ({
+      ...prev,
+      onStateChange: updateSelectedRows
+    }));
+
+    // Initial update
+    updateSelectedRows();
+
+    return () => {
+      // Cleanup subscription
+      table.setOptions((prev) => ({
+        ...prev,
+        onStateChange: () => {} // Set to a no-op function
+      }));
+    };
+  }, [table.getFilteredSelectedRowModel()]);
+
+  useEffect(() => {
+    console.log('Selected rows', selectedRows);
+  }, [selectedRows]);
 
   return (
     <>

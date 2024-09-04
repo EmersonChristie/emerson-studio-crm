@@ -130,7 +130,7 @@ const authConfig = {
         token.name = user.name;
         token.accessToken = user.token;
       }
-      console.log('JWT token: ', token);
+      // console.log('JWT token: ', token);
       return token;
     },
     async session({ session, token }) {
@@ -142,17 +142,17 @@ const authConfig = {
       if (!session.accessToken) {
         session.accessToken = token.accessToken as string;
       }
-      console.log('Updated session:', session); // Debugging
+      // console.log('Updated session:', session); // Debugging
       return session;
-    },
-    async redirect({ url, baseUrl }) {
-      console.log('Redirecting to:', url); // Debugging
-
-      if (url.startsWith(baseUrl)) {
-        return url;
-      }
-      return baseUrl;
     }
+    // async redirect({ url, baseUrl }) {
+    //   if (url.startsWith(baseUrl)) {
+    //     console.log('Redirecting to URL from callback:', url); // Debugging
+    //     return url;
+    //   }
+    //   console.log('Redirecting to Base URL:', baseUrl); // Debugging
+    //   return baseUrl;
+    // }
   }
 } satisfies NextAuthConfig;
 

@@ -9,7 +9,7 @@ import {
   FormMessage
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Loader2 } from 'lucide-react';
+import { Icons } from '@/components/icons';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { signIn } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
@@ -99,7 +99,9 @@ export default function UserAuthForm() {
           />
 
           <Button disabled={loading} className="ml-auto w-full" type="submit">
-            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            {loading ? (
+              <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
+            ) : null}
             Continue With Email
           </Button>
         </form>
