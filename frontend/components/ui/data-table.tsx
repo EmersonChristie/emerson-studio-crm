@@ -5,6 +5,8 @@ import {
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
+  SortingState,
+  getSortedRowModel,
   useReactTable
 } from '@tanstack/react-table';
 
@@ -16,10 +18,15 @@ import {
   TableHeader,
   TableRow
 } from '@/components/ui/table';
+
+import { DataTablePagination } from './data-table-pagination';
+import { DataTableViewOptions } from './data-table-view-options';
+
 import { Input } from './input';
 import { Button } from './button';
 import { ScrollArea, ScrollBar } from './scroll-area';
 import { useState, useEffect } from 'react';
+import Fuse from 'fuse.js';
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -32,12 +39,38 @@ export function DataTable<TData, TValue>({
   data,
   searchKey
 }: DataTableProps<TData, TValue>) {
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filteredData, setFilteredData] = useState(data);
+
+  const fuse = new Fuse(data, {
+    keys: columns
+      .filter((col) => 'accessorKey' in col)
+      .map((col) => (col as any).accessorKey as string),
+    threshold: 0.2 // Adjust the threshold as needed
+  });
+
+  useEffect(() => {
+    if (searchTerm) {
+      const result = fuse.search(searchTerm).map(({ item }) => item);
+      setFilteredData(result);
+    } else {
+      setFilteredData(data);
+    }
+  }, [searchTerm, data]);
+
   const table = useReactTable({
-    data,
+    data: filteredData,
     columns,
     getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel()
+    getFilteredRowModel: getFilteredRowModel(),
+    onSortingChange: setSorting,
+    getSortedRowModel: getSortedRowModel(),
+    state: {
+      sorting
+    }
   });
+
   console.log('DataTable component rendered');
 
   /* this can be used to get the selectedrows
@@ -76,14 +109,17 @@ export function DataTable<TData, TValue>({
 
   return (
     <>
-      <Input
-        placeholder={`Search ${searchKey}...`}
-        value={(table.getColumn(searchKey)?.getFilterValue() as string) ?? ''}
-        onChange={(event) =>
-          table.getColumn(searchKey)?.setFilterValue(event.target.value)
-        }
-        className="w-full md:max-w-sm"
-      />
+      <div className="flex w-full items-center justify-between gap-2">
+        <Input
+          placeholder={`Search...`}
+          value={searchTerm}
+          onChange={(event) => setSearchTerm(event.target.value)}
+          className="flex-grow md:max-w-md"
+        />
+        <div className="flex-shrink-0">
+          <DataTableViewOptions table={table} />
+        </div>
+      </div>
       <ScrollArea className="h-[calc(80vh-220px)] rounded-md border">
         <Table className="relative">
           <TableHeader>
@@ -110,6 +146,9 @@ export function DataTable<TData, TValue>({
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && 'selected'}
+                  onClick={() => {
+                    console.log('Row clicked', row);
+                  }}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
@@ -135,30 +174,8 @@ export function DataTable<TData, TValue>({
         </Table>
         <ScrollBar orientation="horizontal" />
       </ScrollArea>
-      <div className="flex items-center justify-end space-x-2 py-4">
-        <div className="flex-1 text-sm text-muted-foreground">
-          {table.getFilteredSelectedRowModel().rows.length} of{' '}
-          {table.getFilteredRowModel().rows.length} row(s) selected.
-        </div>
-        <div className="space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
-          >
-            Previous
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
-          >
-            Next
-          </Button>
-        </div>
-      </div>
+      {/* PAGINATION */}
+      <DataTablePagination table={table} />
     </>
   );
 }
