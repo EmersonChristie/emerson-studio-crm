@@ -1,4 +1,4 @@
-import { Artwork, PostArtworkSchema, ArtworkCreate } from '@/api/artwork/artworkModel';
+import { Artwork, PostArtworkSchema, ArtworkCreate, ArtworkCategory } from '@/api/artwork/artworkModel';
 import prisma from '../../../prisma/client';
 import { z } from 'zod';
 
@@ -28,5 +28,24 @@ export const artworkRepository = {
   bulkUpdateAsync: async (ids: number[], data: ArtworkCreate): Promise<number> => {
     const updatedArtworks = await prisma.artwork.updateMany({ where: { id: { in: ids } }, data });
     return updatedArtworks.count;
+  },
+  getCategoriesAsync: async (): Promise<ArtworkCategory[]> => {
+    return await prisma.artworkCategory.findMany({
+      include: {
+        artworks: {
+          select: {
+            id: true,
+            title: true,
+          },
+        },
+        mainImage: {
+          select: {
+            id: true,
+            url: true,
+            altText: true,
+          },
+        },
+      },
+    });
   },
 };

@@ -42,3 +42,45 @@ export const PatchBulkUpdateArtworkSchema = z.object({
 
 // Input Validation for 'DELETE artworks/:id' endpoint
 export const DeleteArtworkSchema = GetArtworkSchema;
+
+const ArtworkCategorySchema = z.object({
+  id: z.number().int(),
+  name: z.string(),
+  artworks: z.array(
+    z.object({
+      id: z.number().int(),
+      title: z.string(),
+      // Add other fields as necessary
+    })
+  ),
+  mainImage: z
+    .object({
+      id: z.number().int().nullable(),
+      url: z.string().nullable(),
+      altText: z.string().nullable(),
+    })
+    .nullable(),
+  mainImageId: z.number().int().nullable(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+
+// Define the Zod schema for the GET request response
+export const GetArtworkCategoriesResponseSchema = z.array(ArtworkCategorySchema);
+
+export type ArtworkCategory = {
+  id: number;
+  name: string;
+  mainImageId: number | null;
+  createdAt: Date; // Changed from string to Date
+  updatedAt: Date; // Changed from string to Date
+  artworks: {
+    id: number;
+    title: string;
+  }[];
+  mainImage: {
+    id: number | null;
+    url: string | null;
+    altText: string | null;
+  } | null;
+};

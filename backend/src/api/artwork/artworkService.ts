@@ -1,6 +1,6 @@
 import { StatusCodes } from 'http-status-codes';
 
-import { Artwork, ArtworkCreate } from '@/api/artwork/artworkModel';
+import { Artwork, ArtworkCreate, ArtworkCategory } from '@/api/artwork/artworkModel';
 import { artworkRepository } from '@/api/artwork/artworkRepository';
 import { ResponseStatus, ServiceResponse } from '@/common/models/serviceResponse';
 import { logger } from '@/server';
@@ -91,6 +91,22 @@ export const artworkService = {
       );
     } catch (ex) {
       const errorMessage = `Error updating artworks: ${(ex as Error).message}`;
+      logger.error(errorMessage);
+      return new ServiceResponse(ResponseStatus.Failed, errorMessage, null, StatusCodes.INTERNAL_SERVER_ERROR);
+    }
+  },
+
+  getCategories: async (): Promise<ServiceResponse<ArtworkCategory[] | null>> => {
+    try {
+      const categories = await artworkRepository.getCategoriesAsync();
+      return new ServiceResponse<ArtworkCategory[]>(
+        ResponseStatus.Success,
+        'Categories found',
+        categories,
+        StatusCodes.OK
+      );
+    } catch (ex) {
+      const errorMessage = `Error finding categories: ${(ex as Error).message}`;
       logger.error(errorMessage);
       return new ServiceResponse(ResponseStatus.Failed, errorMessage, null, StatusCodes.INTERNAL_SERVER_ERROR);
     }

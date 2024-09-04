@@ -9,6 +9,7 @@ import {
   PatchArtworkSchema,
   PatchBulkUpdateArtworkSchema,
   DeleteArtworkSchema,
+  GetArtworkCategoriesResponseSchema,
 } from '@/api/artwork/artworkModel';
 import { artworkService } from '@/api/artwork/artworkService';
 import { createApiResponse } from '@/api-docs/openAPIResponseBuilders';
@@ -21,6 +22,20 @@ artworkRegistry.register('Artwork', ArtworkSchema);
 export const artworkRouter: Router = (() => {
   const router = express.Router();
 
+  // Get Categories Route
+  artworkRegistry.registerPath({
+    method: 'get',
+    path: '/artworks/categories',
+    tags: ['Artwork'],
+    responses: createApiResponse(GetArtworkCategoriesResponseSchema, 'Success'),
+  });
+
+  router.get('/categories', async (_req: Request, res: Response) => {
+    const categories = await artworkService.getCategories();
+    handleServiceResponse(categories, res);
+  });
+
+  // Get Artworks Route
   artworkRegistry.registerPath({
     method: 'get',
     path: '/artworks',
@@ -33,6 +48,7 @@ export const artworkRouter: Router = (() => {
     handleServiceResponse(serviceResponse, res);
   });
 
+  // Get Artwork by ID Route
   artworkRegistry.registerPath({
     method: 'get',
     path: '/artworks/{id}',
